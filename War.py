@@ -4,7 +4,7 @@ import os
 from pygame import font
 from pygame.constants import K_SPACE, KEYDOWN
 from pygame.sprite import spritecollide
-
+#" FIND A WAY TO SHOOT GUN FROM POSITION OF PLAYER"
 pygame.init()
 GAME_ACTIVE = True
 WIDTH = 1000
@@ -64,27 +64,34 @@ class Player(pygame.sprite.Sprite):
                                  self.player_walk_3, self.player_walk_4, self.player_walk_5, self.player_walk_6]
         self.player_index = 0
         self.player_walk_index = 0
-
+        self.x = 400
+        self.y = 600
         self.image = self.player_idles_list[self.player_index]
-        self.rect = self.image.get_rect(midbottom=(400, 540))
-        self.gravity = 0
-        self.walk_steps = 4
-        self.player_Pos = [self.rect.x, self.rect.y]
+        self.rect = self.image.get_rect(midbottom=(self.x, self.y))
+        self.gravity = 0.75
+        self.walk_speed = 2
+        self.vel_y = 0
 
     def player_input(self):
         keys = pygame.key.get_pressed()
+        dx = 0
+        dy = 0
 
         if keys[pygame.K_SPACE] and self.rect.bottom >= 540:
-            self.gravity -= 30
+            self.vel_y = -20
         if keys[pygame.K_d] and self.rect.bottom == 540:
-            self.rect.x += self.walk_steps
+            dx = self.walk_speed
 
         if keys[pygame.K_a]:
-            self.rect.x -= self.walk_steps
+            dx = -self.walk_speed
+        # update rect position
+        self.vel_y += self.gravity
+        dy += self.vel_y
 
-    def apply_gravity(self):
-        self.gravity += 1
-        self.rect.y += self.gravity
+        self.rect.x += dx
+        self.rect.y += dy
+
+    def apply_border(self):
         if self.rect.bottom >= 540:
             self.rect.bottom = 540
 
@@ -105,16 +112,11 @@ class Player(pygame.sprite.Sprite):
             if self.player_index >= len(self.player_idles_list):
                 self.player_index = 0
             self.image = self.player_idles_list[int(self.player_index)]
-        self.player_Pos = [self.rect.x, self.rect.y]
 
     def update(self):
         self.player_input()
-        self.apply_gravity()
+        self.apply_border()
         self.animate_state()
-
-    def create_bullet(self):
-
-        return Bullet(self.player_Pos[0], self.player_Pos[1])
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -168,17 +170,19 @@ class Enemy(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__()
+        self.speed = 10
         self.image = pygame.Surface((50, 10))
         self.image.fill((255, 0, 0))
         self.rect = self.image.get_rect(center=(pos_x, pos_y))
+        self.rect.midbottom = (pos_x, pos_y)
 
     def update(self):
         self.rect.x += 5
 
 
 player = Player()
-player_group = pygame.sprite.Group()
-player_group.add(Player())
+player_group = pygame.sprite.GroupSingle()
+player_group.add(player)  # finisheD HERE
 
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
@@ -188,16 +192,18 @@ background_surface = pygame.image.load(
     os.path.join("Assets", "Background.png"))
 
 
+def sprite_collision():
+    pass
+
+
 def draw_window():
     SCREEN.blit(background_surface, (0, 0))
     player_group.draw(SCREEN)
     player_group.update()
-
     enemy_group.draw(SCREEN)
     enemy_group.update()
-
-    bullet_group.draw(SCREEN)
     bullet_group.update()
+    bullet_group.draw(SCREEN)
 
 
 enemy_Spawn = pygame.USEREVENT + 1
@@ -211,7 +217,9 @@ while True:
             if event.type == enemy_Spawn:
                 enemy_group.add(Enemy())
             if event.type == pygame.MOUSEBUTTONDOWN:
-                bullet_group.add(player.create_bullet())
+                bullet = Bullet(player.rect.centerx, player.rect.centery)
+                bullet_group.add(bullet)
+
         else:
             """Check for input to restart game ex. Reset time, Reset Enemy Position"""
             pass

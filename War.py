@@ -4,9 +4,9 @@ import os
 from pygame import font
 from pygame.constants import K_SPACE, KEYDOWN
 from pygame.sprite import spritecollide
-#" FIND A WAY TO SHOOT GUN FROM POSITION OF PLAYER"
+# " FIND A WAY TO SHOOT GUN FROM POSITION OF PLAYER"
 pygame.init()
-GAME_ACTIVE = True
+GAME_ACTIVE = False
 WIDTH = 1000
 HEIGHT = 800
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -14,7 +14,14 @@ NAME_OF_DISPLAY = pygame.display.set_caption("City Defender")
 CLOCK = pygame.time.Clock()
 FONT_ = pygame.font.Font(os.path.join(
     "Assets/FONT", "FutureMillennium Black.ttf"), 50)
+GAME_NAME = FONT_.render('Monster Defense', False, 'white')
+GAME_NAME_RECT = GAME_NAME.get_rect(center=(500, 80))
 
+GAME_START_MESSAGE = FONT_.render("Press Space To Start!", False, ('White'))
+GAMESTART_RECT = GAME_START_MESSAGE.get_rect(center=(500, 400))
+
+START_TIME = 0
+SCORE = 0
 # GROUND LIMIT = 540 FOR player
 
 
@@ -170,10 +177,12 @@ class Enemy(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__()
+
         self.speed = 10
         self.image = pygame.Surface((50, 10))
         self.image.fill((255, 0, 0))
-        self.rect = self.image.get_rect(center=(pos_x, pos_y))
+        self.rect = self.image.get_rect(
+            center=(pos_x, pos_y))
         self.rect.midbottom = (pos_x, pos_y)
 
     def update(self):
@@ -182,18 +191,32 @@ class Bullet(pygame.sprite.Sprite):
 
 player = Player()
 player_group = pygame.sprite.GroupSingle()
-player_group.add(player)  # finisheD HERE
-
+player_group.add(player)
 enemy_group = pygame.sprite.Group()
-bullet_group = pygame.sprite.Group()
+bullet_group = pygame.sprite.GroupSingle()
 
-# SURFACES
+# SURFACE
 background_surface = pygame.image.load(
     os.path.join("Assets", "Background.png"))
 
 
 def sprite_collision():
-    pass
+    global GAME_ACTIVE
+    if bullet_group.sprite:
+        if pygame.sprite.spritecollide(bullet_group.sprite, enemy_group, False):
+            enemy_group.empty()
+
+    if pygame.sprite.spritecollide(player_group.sprite, enemy_group, False):
+        enemy_group.empty()
+        GAME_ACTIVE = False
+
+
+def display_time():
+    current_time = int(pygame.time.get_ticks() / 1000) - START_TIME
+    time_surface = FONT_.render(f"Score: {current_time}", False, "White")
+    time_rect = time_surface.get_rect(center=(500, 80))
+    SCREEN.blit(time_surface, time_rect)
+    return current_time
 
 
 def draw_window():
@@ -202,12 +225,12 @@ def draw_window():
     player_group.update()
     enemy_group.draw(SCREEN)
     enemy_group.update()
-    bullet_group.update()
     bullet_group.draw(SCREEN)
+    bullet_group.update()
 
 
 enemy_Spawn = pygame.USEREVENT + 1
-pygame.time.set_timer(enemy_Spawn, 4000)
+pygame.time.set_timer(enemy_Spawn, 2000)
 
 while True:
     for event in pygame.event.get():
@@ -217,18 +240,35 @@ while True:
             if event.type == enemy_Spawn:
                 enemy_group.add(Enemy())
             if event.type == pygame.MOUSEBUTTONDOWN:
-                bullet = Bullet(player.rect.centerx, player.rect.centery)
+                bullet = Bullet(player.rect.centerx +
+                                (0.2 * player.rect.size[0]), player.rect.centery)
                 bullet_group.add(bullet)
-
         else:
             """Check for input to restart game ex. Reset time, Reset Enemy Position"""
-            pass
+            if event.type == pygame.KEYDOWN and event.key == K_SPACE:
+                GAME_ACTIVE = True
+                START_TIME = int(pygame.time.get_ticks() / 1000)
+
     if GAME_ACTIVE:
         """DRAW WINDOW"""
         draw_window()
+        sprite_collision()
+        SCORE = display_time()
 
     else:
         """ALTERNATE BETWEEN SCREENS IF SCORE IS < 0 == START SCREEN OR IF SCORE > 0 == SHOW SCORE"""
-        pass
+        if SCORE == 0:
+            SCREEN.fill('Black')
+            SCREEN.blit(GAME_NAME, GAME_NAME_RECT)
+            SCREEN.blit(GAME_START_MESSAGE, GAMESTART_RECT)
+
+        elif SCORE > 0:
+            SCREEN.fill('black')
+            SCREEN.blit(GAME_NAME, GAME_NAME_RECT)
+            score_message = FONT_.render(
+                f"Your score: {SCORE}", False, "white")
+            score_message_rect = score_message.get_rect(center=(500, 300))
+            SCREEN.blit(score_message, score_message_rect)
+
     pygame.display.update()
     CLOCK.tick(60)
